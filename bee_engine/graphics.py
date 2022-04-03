@@ -2,6 +2,8 @@ from bee_engine.logger import *
 from tkinter import *
 import time, os, sys
 
+
+
 __version__ = "0.1"
 
 
@@ -9,7 +11,6 @@ _window = Tk()
 _canvas = Canvas(_window)
 _debug = True
 _update = time.time()
-
 
 max_width = _window.winfo_screenwidth()
 max_height = _window.winfo_screenheight()
@@ -121,11 +122,26 @@ class Entity:
     def getid(self):
         return self.id
 
+    def get_object(self):
+        return self.shaper
+
+    def get_x(self):
+        return _canvas.coords(self.shaper)[0]
+
+    def get_y(self):
+        return _canvas.coords(self.shaper)[1]
+
     def undraw(self):
         _canvas.delete(self.shaper)
 
     def move(self,x,y):
         _canvas.move(self.shaper, x, y)
+
+    def collided_with(self, target):
+        a = _canvas.bbox(self.shaper)
+        b = _canvas.bbox(target)
+        if b[0] in range(a[0], a[2]) or b[2] in range(a[0], a[2]) and b[1] in range(a[1], a[3]) or b[3] in range(a[1],a[3]):
+            return True
 
 class Gui:
     def __init__(self,x,y,color=None,text=None,entry=None,button=None,bt=None,command=None):
@@ -153,6 +169,4 @@ class Gui:
     def undraw(self):
         _canvas.delete(self.shaper)
 
-##############################
-def bind(evnt,command):
-    _window.bind(evnt,command)
+
