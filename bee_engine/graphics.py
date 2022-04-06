@@ -1,9 +1,9 @@
 from bee_engine.logger import *
 from tkinter import *
 import time, os, sys
-
-
-
+import pymunk
+from playsound import playsound
+from PIL import Image,ImageTk
 __version__ = "0.1"
 
 
@@ -81,10 +81,15 @@ class Bee:
         self.tick = tick
         _window.after(self.tick, self.command)
 
+    def wipe(self):
+        _canvas.delete("all")
+
 
 class Entity:
-    def __init__(self,id,x,y,size,shape=None,color=None,path=None):
+    def __init__(self,id,x,y,size=None,shape=None,color=None,path=None,physicsless=None,mass=None,width=None,height=None):
         global _canvas
+        self.physicsless = physicsless
+        self.mass = mass
         self.path = path
         self.id = id
         self.x = x
@@ -93,23 +98,36 @@ class Entity:
         self.shape = shape
         self.color = color
         self.c =  _canvas
+        self.width = width
+        self.height = height
+
+        ########PHYSICS STUFF###########
+        if not self.physicsless:
+            if self.mass != None:
+                self.body = pymunk.Body()
+                self.body.position = self.x,self.y
+        elif self.physicsless == None:
+            if self.mass != None:
+                Logger.send_error(self, "Cant use mass since the entity doesnt allow Physics")
 
     def draw(self):
-        self.x2 = self.x + self.size
-        self.y2 = self.y + self.size
-
         if self.shape == "image":
             if self.path != None:
-                self.image = PhotoImage(master=_canvas, file=self.path, width=self.size, height=self.size)
-                self.shaper = _canvas.create_image(self.x, self.y, image=self.image)
+                self.image = (Image.open(self.path))
+                self.resized = self.image.resize((self.width,self.height), Image.ANTIALIAS)
+                self.shaper = ImageTk.PhotoImage(self.resized)
             else:
                 Logger.send_error(self, "-Path is missing!", _debug)
         else:
+            if self.size == None:
+                Logger.send_error(self, "-Size is missing!", _debug)
             if self.shape == None:
                 Logger.send_error(self, "-Shape is missing!", _debug)
             if self.color == None:
                 Logger.send_error(self, "-Colour is missing!", _debug)
             else:
+                self.x2 = self.x + self.size
+                self.y2 = self.y + self.size
                 if self.shape == "rectangle":
                     self.shaper = _canvas.create_rectangle(self.x, self.y, self.x2, self.y2, fill=self.color)
                 elif self.shape == "circle":
@@ -170,3 +188,29 @@ class Gui:
         _canvas.delete(self.shaper)
 
 
+
+class Space:
+    def __init__(self,gravity,debug):
+        self.debug = debug
+        self.gravity = gravity
+        self.space = pymunk.space()
+        self.space.gravity = self.gravity
+
+    def add(self,body, poly):
+        self.body = body
+        self.poly = poly
+        self.space.add(self.body,self.poly)
+
+
+
+class Musicman:
+    def __init__(self):
+        pass
+    def play(self, sound):
+        self.sound = sound
+        playsound(self.sound)
+
+
+##############################
+def bind(evnt,command):
+    _window.bind(evnt,command)
