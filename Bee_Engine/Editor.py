@@ -8,14 +8,10 @@ from engine.Scene import *
 import time
 import numpy as np
 from tkinter import ttk
+from tkinter.messagebox import showinfo
 from tkcode import CodeEditor
 
-def closest_value(input_list, input_value):
-    arr = np.asarray(input_list)
 
-    i = (np.abs(arr - input_value)).argmin()
-
-    return arr[i]
 
 
 start_time = time.time()
@@ -38,18 +34,24 @@ class Ecs:
         self.entities.append(entity)
         Logger.send_info(self,(" ECS: added " + str(self.name) + " to Entity list"), True)
         self.entities_id.append(str(self.id))
-        print(str(self.entities_id))
+        #print(str(self.entities_id))
 
     def get_all_id(self):
         return self.entities_id
 
+    def get_entity(self,id):
+        return self.entities[id]
+
+    def get_all_entities(self):
+        return self.entities
+
 
     def change(self, id, line):
         for i in self.entities:
-            print("oi" + str(i))
-            print("oi" + str(id))
+            #print("oi" + str(i))
+            #print("oi" + str(id))
             if str(id) == str(i):
-                print("IT WORKEd")
+               # print("IT WORKEd")
 
                 self.writer.change(int(id), str(line))
 
@@ -117,7 +119,7 @@ class Writer:
 pressed = False
 
 
-class Example(Frame):
+class Camera_Editor(Frame):
     def __init__(self, root, canvas):
         Frame.__init__(self, root)
         self.canvas = canvas
@@ -211,11 +213,11 @@ class Editor:
         self.icon = PhotoImage(file='engine/images/bee1.png')
         self.root_tk.tk.call('wm', 'iconphoto', self.root_tk._w, self.icon)
 
-        Example(self.root_tk,self._canvas)
+        Camera_Editor(self.root_tk,self._canvas)
 
         ##################################################
         # setting up the layout
-        self.entity_list_frame = customtkinter.CTkFrame(master=self.root_tk, width=200, height=(self.root_height - 100),
+        self.entity_list_frame = customtkinter.CTkFrame(master=self.root_tk, width=250, height=(self.root_height - 100),
                                                    corner_radius=10)
         self.entity_list_frame.grid(row=1, column=0, padx=10, pady=20)
         self.entity_list_frame.grid_propagate(0)
@@ -264,6 +266,70 @@ class Editor:
         self.play_button.place(x=125, y=10)
         self.test_button.place(x=65, y=10)
         self._canvas.bind("<B1-Motion>", self.onObjectClick)
+
+
+        ##### TREEVIEW
+        #create the tree view
+        self.tree = self.create_tree_widget()
+
+    def create_tree_widget(self):
+        style = ttk.Style(self.entity_list_frame)
+        # set ttk theme to "clam" which support the fieldbackground option
+        style.theme_use("clam")
+        style.configure("Treeview", background="black",
+                        fieldbackground="light gray", foreground="white")
+        self.columns = ('first_name', 'last_name', 'email')
+        self.tree = ttk.Treeview(self.entity_list_frame, columns=self.columns, show='headings',height=self.root_height - 10)
+
+        # define headings
+        self.tree.heading('first_name', text='Entity')
+        self.tree.heading('last_name', text='Id')
+        #self.tree.heading('email', text='Email')
+
+        self.tree.bind('<<TreeviewSelect>>', self.item_selected)
+        self.tree.grid(row=0, column=0, sticky=NSEW)
+
+        # add a scrollbar
+        self.scrollbar = ttk.Scrollbar(self.entity_list_frame, orient=VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscroll=self.scrollbar.set)
+        self.scrollbar.grid(row=0, column=1, sticky='ns')
+
+        # generate sample data
+        self.contacts = []
+        #for n in range(1, 100):
+        #    self.contacts.append((f'first {n}', f'last {n}'))
+
+        #for contact in self.contacts:
+        #    self.tree.insert('', END, values=contact)
+
+        return self.tree
+
+    def item_selected(self, event):
+        for selected_item in self.tree.selection():
+            self.item = self.tree.item(selected_item)
+            self.record = self.item['values']
+            # show a message
+            #showinfo(title='Information', message=','.join(str(self.record)))
+            #for i in self.record:
+            #    print(str(i))
+            #    if i.isdigit():
+            #        i = int(i)
+            #        self.list_entity = self._Ecs.get_entity(i)
+            #        self.edit_en
+
+
+
+    def tree_refresh(self):
+        self.tree.delete(*self.tree.get_children())
+        self.list = self._Ecs.get_all_id()
+        #print(str(self.list))
+        for entity in self.list:
+            entity = int(entity)
+            #print(str(entity))
+            self.tree_bob = self._Ecs.get_entity(entity - 1)
+            contact = (self.tree_bob.name, str(self.tree_bob.id))
+            self.tree.insert('', END, values=contact)
+
 
     def test(self):
         self.bob = Entity(1,"bob",250,250,width=50,height=50,shape="rectangle",color="green",per_scene=0,scene=self._Scene)
@@ -337,14 +403,26 @@ class Editor:
 
     def edit_entity(self, entity, Entity):
         #print(str(self.last_entity))
+
+        self.scripts = []
         self.x_pos = round(self._canvas.coords(entity)[0])
         self.y_pos = round(self._canvas.coords(entity)[1])
         self.bounds = self._canvas.bbox(entity)  # returns a tuple like (x1, y1, x2, y2)
         self.width  = self.bounds[2] - self.bounds[0]
         self.height = self.bounds[3] - self.bounds[1]
+        self.scene = Entity.get_per_scene()
+        # SCRIPTS
+        self.scripts_files = Entity.return_all_scripts("EDITOR")
+        self.scripts.append(self.scripts_files)
+
         #print(self.width)
         #print(self.height)
         try:
+            try:
+                self.script_butto.destroy()
+                self.place_y = 335
+            except:
+                pass
             #x
             self.x_entry.delete(0,END)
             self.x_entry.insert(0,str(self.x_pos))
@@ -357,6 +435,30 @@ class Editor:
             # height
             self.h_entry.delete(0, END)
             self.h_entry.insert(0, str(self.height))
+            #name
+            self.n_entry.delete(0, END)
+            self.n_entry.insert(0, str(Entity.get_name()))
+            # scene #to lazy to fix
+            #self.s_entry.delete(0, END)
+            #self.s_entry.insert(0, str(self.scene))
+
+            #SCRIPT
+            #for i in self.scripts:
+            #    if str(i) != "[]":
+            #        print(str(i))
+            #        for j in i:
+            #            print(str(j))
+            #           self.name_script = str(j)
+            #            self.name_script = self.name_script.replace("[", "")
+            #            self.name_script = self.name_script.replace("]", "")
+            #            self.name_script = self.name_script.replace("'", "")
+            #            self.script_butto = customtkinter.CTkButton(master=self.entity_info_frame,
+            ##                                                        text=self.name_script,
+            #                                                        fg_color="blue", text_color="white")
+            #            self.script_butto.place(x=0, y=self.place_y)
+            #            self.script_butto.bind("<Button-1>",lambda: self.script_editor(self.script_butto.config('text')[-1]))
+            #            self.place_y += 50
+
         except:
             pass
 
@@ -377,6 +479,13 @@ class Editor:
             self.h_label = customtkinter.CTkLabel(master=self.entity_info_frame, text="Height", width=5, height=5,
                                                   fg_color="gray", text_color="white", corner_radius=8)
             self.h_label.place(x=0, y=130)
+            self.n_label = customtkinter.CTkLabel(master=self.entity_info_frame, text="Name", width=5, height=5,
+                                                  fg_color="gray", text_color="white", corner_radius=8)
+            self.n_label.place(x=0, y=170)
+            #self.s_label = customtkinter.CTkLabel(master=self.entity_info_frame, text="Scene", width=5, height=5,
+            #                                      fg_color="gray", text_color="white", corner_radius=8)
+            #self.s_label.place(x=0, y=210)
+
             #self.r_label = customtkinter.CTkLabel(master=self.entity_info_frame, text="Rotation", width=5, height=5,
             #                                      fg_color="gray", text_color="white", corner_radius=8)
             #self.r_label.place(x=0, y=170)
@@ -406,6 +515,73 @@ class Editor:
 
             self.h_button = customtkinter.CTkButton(master=self.entity_info_frame,command=lambda: self.edit_size(Entity,int(self.x_entry.get()),int(self.y_entry.get()),int(self.w_entry.get()),int(self.h_entry.get())),text="Change", fg_color="green", text_color="white")
             self.h_button.place(x=170, y=125)
+
+            self.n_entry = customtkinter.CTkEntry(master=self.entity_info_frame, placeholder_text=str(Entity.get_name()))
+            self.n_entry.place(x=50, y=165)
+
+            self.n_button = customtkinter.CTkButton(master=self.entity_info_frame,text="Change", fg_color="green", text_color="white",command=lambda: Entity.change_name(self.n_entry.get()))
+            self.n_button.place(x=170, y=165)
+
+            #self.s_entry = customtkinter.CTkEntry(master=self.entity_info_frame, placeholder_text=str(Entity.get_name()))
+            #self.s_entry.place(x=50, y=205)
+
+            #self.s_button = customtkinter.CTkButton(master=self.entity_info_frame, text="Change", fg_color="green",command=lambda: Entity.change_per_scene(int(self.s_entry.get())),text_color="white")
+            #self.s_button.place(x=170, y=205)
+
+            ##################################
+            # SCRIPT
+
+            self.script_label = customtkinter.CTkLabel(master=self.entity_info_frame, text="Scripts: ", width=100, height=40,fg_color="gray", text_color="white", corner_radius=8)
+            self.script_label.place(x=0, y=280)
+
+            self.script_entry = customtkinter.CTkEntry(master=self.entity_info_frame,placeholder_text="script name")
+            self.script_entry.place(x=125, y=285)
+
+            self.script_button = customtkinter.CTkButton(master=self.entity_info_frame, command=lambda: self.create_script(Entity,self.script_entry.get()),text="Add", fg_color="blue",text_color="white")
+            self.script_button.place(x=250, y=285)
+
+            self.place_y = 335
+            self.tree_refresh()
+
+            ## SCRIPT TREE VIEW WHOOO
+            self.script_tree = ttk.Treeview(self.entity_info_frame, columns=self.columns, show='headings',
+                                     height=self.root_height - 10)
+
+
+            # self.tree.heading('email', text='Email')
+
+            self.script_tree.bind('<<TreeviewSelect>>', self.item_selected)
+            self.script_tree.place(x=5,y=335)#.grid(row=0, column=0, sticky=NSEW)
+
+            # add a scrollbar
+            self.script_scrollbar = ttk.Scrollbar(self.entity_info_frame, orient=VERTICAL, command=self.script_tree.yview)
+            self.script_tree.configure(yscroll=self.script_scrollbar.set)
+            self.script_scrollbar.place(x=self.entity_info_frame.width - 10,y=335,relheight=1)
+
+
+    def create_script(self,entity, name):
+        if name != "":
+            if ".py" in name:
+                self.script_name = name
+                self.entity_script = entity
+                self.entity_script.add_script(self.script_name,"EDITOR")
+                self.script_tree.insert(self.script_name, END)
+                #self.script_editor(self.script_name)
+            elif "." in name and not "py" in name :
+                Logger.send_error(self, "CANT HAVE , OR . IN FILE NAME", True)
+            elif "," in name:
+                Logger.send_error(self, "CANT HAVE , OR . IN FILE NAME", True)
+            elif not ".py" in name:
+                self.script_name = name + ".py"
+                self.entity_script = entity
+                self.entity_script.add_script(self.script_name, "EDITOR")
+                self.script_tree.insert('', END, values=(self.script_name))
+                #self.script_editor(self.script_name)
+        else:
+            Logger.send_error(self, "INVALID SCRIPT NAME", True)
+
+
+
 
     def script_editor(self, filename):
         self._canvas.config(width=0, height=0)
@@ -549,6 +725,8 @@ class Editor:
         #print(self.new_entity_name + " = " + "Entity(" + str(self.new_entity_id) + "," + self.new_entity_name + "," +self.new_entity_x + "," + self.new_entity_y + "," + "size=" + self.new_entity_size + "," + "shape=" + self.new_entity_shape + ",canvas=_canvas,path=" + self.new_entity_path + ",color=" + self.new_entity_color + ",width=" + self.new_entity_width + ",height=" + self.new_entity_height + ",per_scene=" + self.new_entity_scene + ",scene=_scene")
         self.new_entity.draw()
         self._canvas.bind('<B1-Motion>', self.onObjectClick)
+
+
 
     def image_preview(self):
         self.image_width = int(self.width_entry.get())

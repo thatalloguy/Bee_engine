@@ -38,6 +38,8 @@ class Entity(object):
         self.renderd = False
         self.layer = layer
 
+        self.scripts = []
+
         Logger.send_info(self,("Created Entity named " + self.name),_debug)
 
         if self.scene == None or self.ps == None:
@@ -67,6 +69,22 @@ class Entity(object):
 
 
 
+    def add_script(self,scriptname,password):
+        self.scriptname = scriptname
+        self.password = password
+
+        if self.password != "EDITOR":
+            Logger.send_error(self, "ONLY THE EDITOR CAN USE THIS FUNCTION")
+        else:
+            self.scripts.append(self.scriptname)
+
+    def return_all_scripts(self, password):
+        self.password = password
+
+        if self.password != "EDITOR":
+            Logger.send_error(self, "ONLY THE EDITOR CAN USE THIS FUNCTION")
+        else:
+            return self.scripts
 
 
     def play_animation(self, animation_names, delay):
@@ -166,20 +184,25 @@ class Entity(object):
         self.y = y
         #oh no im to lazy
         if self.shape == "image":
-            Logger.send_error(self, "Oh no looks like dev forgot to make this")
+            self.c.delete(self.shaper)
+            self.image = (Image.open(self.path))
+            self.resized = self.image.resize((width, height))
+            self.imager = ImageTk.PhotoImage(self.resized)
+            self.shaper = self.c.create_image(x, y, image=self.imager,
+                                              tags=str(self.id))
         #UE5
         elif self.shape == "rectangle":
             self.x2 = self.x + width
             self.y2 = self.y + height
-            self.shaper = self._canvas.create_rectangle(self.x,self.y,self.x2,self.y2,fill=self.color)
+            self.shaper = self._canvas.create_rectangle(self.x,self.y,self.x2,self.y2,fill=self.color,tags=str(self.id))
         elif self.shape == "circle":
             self.x2 = self.x + width
             self.y2 = self.y + height
-            self.shaper = self._canvas.create_oval(self.x,self.y,self.x2,self.y2,fill=self.color)
+            self.shaper = self._canvas.create_oval(self.x,self.y,self.x2,self.y2,fill=self.color,tags=str(self.id))
         elif self.shape == "line":
             self.x2 = self.x + width
             self.y2 = self.y + height
-            self.shaper = self._canvas.create_line(self.x,self.y,self.x2,self.y2,fill=self.color)
+            self.shaper = self._canvas.create_line(self.x,self.y,self.x2,self.y2,fill=self.color,tags=str(self.id))
 
     def get_body(self):
         return self.body
@@ -204,9 +227,18 @@ class Entity(object):
     def get_y_origin(self):
         return self.y
 
+    def change_per_scene(self,scene):
+        self.scene = scene
+        self.draw()
+
+    def get_per_scene(self):
+        return self.ps
 
     def get_name(self):
         return self.name
+
+    def change_name(self,name):
+        self.name = name
 
     def undraw(self):
         self.c.delete(self.shaper)
