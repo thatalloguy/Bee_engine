@@ -1,0 +1,3 @@
+FILE = ""
+PYINSTALLER = False
+RICH_PRESENCE = False
